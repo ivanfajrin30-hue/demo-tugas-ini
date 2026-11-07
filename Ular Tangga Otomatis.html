@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ular Tangga Otomatis</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&display=swap">
+<style>
+:root{color-scheme:light dark;--bg:#dfeaf5;--panel:#fff;--ink:#1d2a44;--mute:#5a6985;--c0:#ffd6d1;--c1:#fff0b3;--c2:#cdeedb;--c3:#cfe3ff;--end:#ffd166;--line:#b8c7dd;--btn:#4f46e5;--btnink:#fff;--rail:#7a4a21;--rung:#a56a33;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1830;--panel:#17233f;--ink:#eef3ff;--mute:#9fb0d0;--c0:#6b3a3f;--c1:#6b5a2a;--c2:#2f5d49;--c3:#2f4d7a;--end:#8a6a14;--line:#2d3f66;--btn:#8b8bff;--btnink:#0f1830;--rail:#d9a066;--rung:#f0c48a}}
+:root[data-theme="dark"]{--bg:#0f1830;--panel:#17233f;--ink:#eef3ff;--mute:#9fb0d0;--c0:#6b3a3f;--c1:#6b5a2a;--c2:#2f5d49;--c3:#2f4d7a;--end:#8a6a14;--line:#2d3f66;--btn:#8b8bff;--btnink:#0f1830;--rail:#d9a066;--rung:#f0c48a}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:500 16px/1.4 Fredoka,ui-rounded,system-ui,sans-serif}
+.app{max-width:1000px;margin:0 auto;padding:14px;display:grid;gap:14px}
+h1{margin:0;font-size:30px;font-weight:700;letter-spacing:-.01em}
+.sub{margin:2px 0 0;color:var(--mute)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px}
+.side{display:grid;gap:14px;align-content:start}
+@media(min-width:860px){.app{grid-template-columns:minmax(0,1fr) 320px;align-items:start}.head{grid-column:1/-1}}
+svg{display:block;width:100%;height:auto}
+rect{stroke:var(--line);stroke-width:1}
+.c0{fill:var(--c0)}.c1{fill:var(--c1)}.c2{fill:var(--c2)}.c3{fill:var(--c3)}.end{fill:var(--end)}
+.num{font:600 11px Fredoka,system-ui,sans-serif;fill:var(--ink);opacity:.65}
+.rail{stroke:var(--rail);stroke-width:4;stroke-linecap:round}
+.rung{stroke:var(--rung);stroke-width:3;stroke-linecap:round}
+.sn{fill:none;stroke-width:9;stroke-linecap:round;opacity:.9}
+.sn2{fill:none;stroke:#fff;stroke-opacity:.55;stroke-width:2.5;stroke-dasharray:2 9;stroke-linecap:round}
+.sep{stroke:var(--line);stroke-width:2}
+.tok{transition:transform var(--d,.25s) ease-in-out}
+.tok circle{stroke:#fff;stroke-width:2.5}
+.tk{fill:#fff;font:700 11px Fredoka,system-ui,sans-serif;text-anchor:middle}
+.row{display:flex;align-items:center;gap:14px}
+.die{flex:none;width:68px;height:68px;display:grid;grid:repeat(3,1fr)/repeat(3,1fr);padding:11px;border-radius:15px;background:var(--panel);border:3px solid var(--ink)}
+.die i{border-radius:50%}.die i.on{background:var(--ink)}
+.big{font-size:19px;font-weight:700}
+.mute{color:var(--mute);font-size:14px}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+button{font:inherit;padding:9px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+button.pri,.seg button.on{background:var(--btn);color:var(--btnink);border-color:transparent}
+button:disabled{opacity:.45;cursor:default}
+.ctl{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
+.seg{display:flex;gap:6px}.seg button{padding:6px 14px}
+input[type=range]{accent-color:var(--btn);width:150px}
+.pl{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;border:2px solid transparent}
+.pl b{margin-left:auto;font-weight:500;color:var(--mute)}
+.pl.act{border-color:var(--btn)}
+.dot{width:15px;height:15px;border-radius:50%;display:inline-block;flex:none}
+#log div{font-size:14px;color:var(--mute);padding:2px 0}
+#log div:first-child{color:var(--ink);font-weight:700}
+</style>
+</head>
+<body>
+<main class="app">
+  <div class="head">
+    <h1>Ular tangga</h1>
+    <p class="sub">Dadu dilempar otomatis sampai ada pemain yang mencapai kotak 100.</p>
+  </div>
+  <div class="card"><svg id="bd" viewBox="0 0 600 640" role="img" aria-label="Papan ular tangga 10 kali 10"></svg></div>
+  <div class="side">
+    <div class="card">
+      <div class="row"><div class="die" id="die"></div><div><div class="big" id="turn"></div><div class="mute">Angka 6 dapat giliran lagi</div></div></div>
+      <div class="btns"><button class="pri" id="auto"></button><button id="roll">Lempar dadu</button><button id="reset">Main ulang</button></div>
+      <div class="ctl"><span>Pemain</span><div class="seg" id="seg"></div></div>
+      <div class="ctl"><span>Kecepatan</span><input type="range" id="spd" min="1" max="5" value="3" aria-label="Kecepatan"></div>
+    </div>
+    <div class="card"><div class="ctl" style="margin:0"><b>Arena</b><div class="seg"><button id="edit">Ubah</button><button id="rnd">Acak</button><button id="def">Bawaan</button></div></div><p class="mute" id="hint" style="margin:8px 0 0"></p></div>
+    <div class="card" id="pl"></div>
+    <div class="card" id="log"></div>
+  </div>
+</main>
+<script>
+const DEF={LD:{4:14,9:31,20:38,28:84,40:59,51:67,63:81,71:91},SN:{17:7,54:34,62:19,64:60,87:24,93:73,95:75,99:78}};
+let LD={...DEF.LD},SN={...DEF.SN},J={...LD,...SN};
+function ok(l,s){
+  const j={...l,...s},used=new Set(),row=n=>(n-1)/10|0;
+  for(const[m,d]of[[l,1],[s,-1]])for(const k in m){
+    const a=+k,b=m[k];
+    if(!Number.isInteger(a)||!Number.isInteger(b)||a<2||a>99||b<1||b>100||(b-a)*d<=0||row(a)===row(b)||used.has(a)||used.has(b))return false;
+    used.add(a);used.add(b);
+  }
+  const seen=new Set([0]),q=[0];
+  while(q.length){const p=q.pop();if(p===100)return true;for(let r=1;r<=6;r++){let n=p+r;if(n>100)continue;n=j[n]||n;if(!seen.has(n)){seen.add(n);q.push(n)}}}
+  return false;
+}
+function setArena(l,s,save=true){LD=l;SN=s;J={...l,...s};if(save)try{localStorage.setItem('ular-tangga-arena',JSON.stringify({LD,SN}))}catch(e){}}
+try{const d=JSON.parse(localStorage.getItem('ular-tangga-arena'));if(d&&ok(d.LD||{},d.SN||{}))setArena(d.LD,d.SN,false)}catch(e){}
+const COL=["#e63946","#2a9d8f","#f4a261","#6a4c93"];
+const SC=["#d1495b","#e9a23b","#2b9eb3","#8e5aa8","#4f9d4a","#e76f51","#3d5a80","#c44569"];
+const OFF=[[-11,-11],[11,-11],[-11,11],[11,11]];
+const $=id=>document.getElementById(id);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const spd=()=>[560,380,250,140,60][$('spd').value-1];
+const ctr=n=>{const r=Math.floor((n-1)/10),c=r%2?9-(n-1)%10:(n-1)%10;return{x:c*60+30,y:(9-r)*60+30}};
+
+function ladder(f,t){
+  const a=ctr(f),b=ctr(t),dx=b.x-a.x,dy=b.y-a.y,L=Math.hypot(dx,dy),ux=dx/L,uy=dy/L,nx=-uy*7,ny=ux*7;
+  let s=`<line class="rail" x1="${a.x+nx}" y1="${a.y+ny}" x2="${b.x+nx}" y2="${b.y+ny}"/><line class="rail" x1="${a.x-nx}" y1="${a.y-ny}" x2="${b.x-nx}" y2="${b.y-ny}"/>`;
+  for(let t=14;t<L-8;t+=20){const x=a.x+ux*t,y=a.y+uy*t;s+=`<line class="rung" x1="${x+nx}" y1="${y+ny}" x2="${x-nx}" y2="${y-ny}"/>`}
+  return s;
+}
+function snake(f,t,col){
+  const a=ctr(f),b=ctr(t),dx=b.x-a.x,dy=b.y-a.y,L=Math.hypot(dx,dy),nx=-dy/L,ny=dx/L,k=L*.18;
+  const p=`M${a.x},${a.y} C${a.x+dx*.25+nx*k},${a.y+dy*.25+ny*k} ${a.x+dx*.75-nx*k},${a.y+dy*.75-ny*k} ${b.x},${b.y}`;
+  return `<path class="sn" d="${p}" stroke="${col}"/><path class="sn2" d="${p}"/><circle cx="${a.x}" cy="${a.y}" r="9" fill="${col}"/><circle cx="${a.x-3.5}" cy="${a.y-2}" r="2.6" fill="#fff"/><circle cx="${a.x+3.5}" cy="${a.y-2}" r="2.6" fill="#fff"/><circle cx="${a.x-3.5}" cy="${a.y-2}" r="1.2" fill="#111"/><circle cx="${a.x+3.5}" cy="${a.y-2}" r="1.2" fill="#111"/>`;
+}
+(function build(){
+  let h='';
+  for(let n=1;n<=100;n++){
+    const c=ctr(n),r=Math.floor((n-1)/10),cc=(c.x-30)/60;
+    h+=`<rect x="${c.x-30}" y="${c.y-30}" width="60" height="60" class="${n==100?'end':'c'+((r+cc)%4)}"/><text class="num" x="${c.x-26}" y="${c.y-17}">${n}</text>`;
+  }
+  h+=`<text x="${ctr(100).x}" y="${ctr(100).y+14}" text-anchor="middle" font-size="22">🏁</text>`;
+  h+='<g id="deco"></g><g id="hl"></g>';
+  h+=`<line class="sep" x1="0" y1="604" x2="600" y2="604"/><text class="num" x="150" y="625" style="font-size:14px">Mulai</text>`;
+  for(let i=0;i<4;i++)h+=`<g class="tok" id="t${i}"><circle r="10" fill="${COL[i]}"/><text class="tk" y="4">${i+1}</text></g>`;
+  $('bd').innerHTML=h;
+})();
+function drawDeco(){
+  let h='';
+  for(const f in LD)h+=ladder(+f,LD[f]);
+  Object.keys(SN).forEach((f,i)=>{h+=snake(+f,SN[f],SC[i%SC.length])});
+  $('deco').innerHTML=h;
+  $('hl').innerHTML=pend?`<rect x="${ctr(pend).x-28}" y="${ctr(pend).y-28}" width="56" height="56" rx="8" fill="none" stroke="var(--btn)" stroke-width="4"/>`:'';
+}
+function randomArena(){
+  const row=n=>(n-1)/10|0;
+  for(let t=0;t<200;t++){
+    const l={},s={},used=new Set();
+    for(const up of [1,0])for(let c=0,k=0;c<8&&k<500;k++){
+      const a=2+Math.random()*98|0,b=1+Math.random()*100|0;
+      if(up?b<=a:b>=a)continue;
+      if(Math.abs(b-a)<12||row(a)===row(b)||used.has(a)||used.has(b))continue;
+      (up?l:s)[a]=b;used.add(a);used.add(b);c++;
+    }
+    if(ok(l,s))return[l,s];
+  }
+  return[{...DEF.LD},{...DEF.SN}];
+}
+
+let N=2,auto=true,busy=false,over=false,gid=0,cur=0,pos=[0,0,0,0],loopG=-1,lg=[],edit=false,pend=0;
+const P=[[4],[0,8],[0,4,8],[0,2,6,8],[0,2,4,6,8],[0,2,3,5,6,8]];
+const face=r=>{$('die').innerHTML=Array.from({length:9},(_,i)=>`<i class="${P[r-1].includes(i)?'on':''}"></i>`).join('')};
+function place(i,d){
+  const p=pos[i],q=p?{x:ctr(p).x+OFF[i][0],y:ctr(p).y+OFF[i][1]}:{x:24+i*28,y:622};
+  const t=$('t'+i);t.style.setProperty('--d',d+'ms');t.style.transform=`translate(${q.x}px,${q.y}px)`;
+}
+function say(m){lg.unshift(m);lg=lg.slice(0,5);$('log').innerHTML=lg.map(x=>`<div>${x}</div>`).join('')}
+function ui(){
+  $('turn').innerHTML=edit?'✏️ Ubah arena':over?`🎉 Pemain ${cur+1} menang!`:`<span class="dot" style="background:${COL[cur]};margin-right:6px"></span>Giliran pemain ${cur+1}`;
+  $('pl').innerHTML=Array.from({length:N},(_,i)=>`<div class="pl ${i==cur?'act':''}"><span class="dot" style="background:${COL[i]}"></span>Pemain ${i+1}<b>${pos[i]?'Kotak '+pos[i]:'Belum mulai'}</b></div>`).join('');
+  $('auto').textContent=auto?'⏸ Jeda':'▶ Otomatis';
+  $('roll').disabled=auto||busy||over||edit;$('edit').classList.toggle('on',edit);$('bd').style.cursor=edit?'pointer':'';
+  $('hint').textContent=edit?'Ketuk kotak awal, lalu kotak tujuan: lebih tinggi jadi tangga, lebih rendah jadi ular. Ketuk kotak awal yang sudah ada untuk menghapusnya.':'Arena tersimpan di perangkat ini dan bisa kamu ubah sesuka hati.';
+  document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('on',+b.dataset.n===N));
+}
+async function turn(){
+  if(busy||over)return;
+  busy=true;const g=gid;ui();
+  const w=async ms=>{await sleep(ms);if(g!==gid)throw 0};
+  try{
+    const i=cur,nm='Pemain '+(i+1);
+    for(let k=0;k<6;k++){face(1+Math.random()*6|0);await w(Math.max(40,spd()/4))}
+    const r=1+Math.random()*6|0;face(r);await w(spd()/2);
+    if(pos[i]+r>100)say(`${nm} dapat ${r}, tapi butuh angka pas ke kotak 100`);
+    else{
+      say(`${nm} dapat ${r}`);
+      for(let k=0;k<r;k++){pos[i]++;place(i,spd());ui();await w(spd())}
+      const j=J[pos[i]];
+      if(j){
+        await w(spd());
+        say(j>pos[i]?`${nm} naik tangga ke kotak ${j} 🪜`:`${nm} dimakan ular, turun ke kotak ${j} 🐍`);
+        pos[i]=j;place(i,spd()*3);await w(spd()*3);
+      }
+    }
+    if(pos[i]===100){over=true;say(`🎉 ${nm} menang!`)}
+    else if(r===6)say(`${nm} dapat giliran lagi`);
+    else cur=(cur+1)%N;
+  }catch(e){}
+  finally{if(g===gid){busy=false;ui()}}
+}
+async function loop(){
+  if(loopG===gid)return;
+  const g=loopG=gid;
+  while(auto&&!over&&g===gid){
+    if(busy){await sleep(80);continue}
+    await turn();await sleep(spd()*1.2);
+  }
+  if(loopG===g)loopG=-1;
+}
+function reset(){
+  gid++;busy=false;over=false;cur=0;pos=[0,0,0,0];lg=[];
+  for(let i=0;i<4;i++){$('t'+i).style.display=i<N?'':'none';place(i,0)}
+  drawDeco();face(1);say(`Permainan dimulai dengan ${N} pemain`);ui();
+  if(auto)loop();
+}
+$('seg').innerHTML=[2,3,4].map(n=>`<button data-n="${n}">${n}</button>`).join('');
+$('seg').onclick=e=>{const n=+e.target.dataset.n;if(n){N=n;reset()}};
+$('auto').onclick=()=>{if(edit){edit=false;pend=0;auto=true;reset();return}auto=!auto;ui();if(auto)loop()};
+$('roll').onclick=()=>turn();
+$('reset').onclick=reset;
+$('edit').onclick=()=>{edit=!edit;pend=0;if(edit)auto=false;reset()};
+$('rnd').onclick=()=>{const a=randomArena();setArena(a[0],a[1]);pend=0;reset()};
+$('def').onclick=()=>{setArena({...DEF.LD},{...DEF.SN});pend=0;reset()};
+$('bd').onclick=e=>{
+  if(!edit)return;
+  const r=$('bd').getBoundingClientRect(),x=(e.clientX-r.left)/r.width*600,y=(e.clientY-r.top)/r.height*640;
+  if(x<0||x>=600||y<0||y>=600)return;
+  const col=x/60|0,rw=9-(y/60|0),n=rw*10+(rw%2?9-col:col)+1;
+  const hint=t=>{$('hint').textContent=t};
+  const used=new Set([...Object.keys(J).map(Number),...Object.values(J)]);
+  if(!pend){
+    if(J[n]){const l={...LD},s={...SN};delete l[n];delete s[n];if(ok(l,s)){setArena(l,s);reset();hint(`Kotak ${n} dihapus`)}else hint('Tidak bisa dihapus: permainan jadi tidak bisa selesai');return}
+    if(n<2||n>99||used.has(n)){hint('Pilih kotak 2–99 yang masih kosong sebagai titik awal');return}
+    pend=n;drawDeco();hint(`Awal: kotak ${n}. Sekarang ketuk kotak tujuan`);return;
+  }
+  const p=pend;
+  if(n===p){pend=0;drawDeco();ui();return}
+  if(used.has(n)||(((n-1)/10|0)===((p-1)/10|0))){hint('Tujuan harus kotak kosong di baris lain');return}
+  const l={...LD},s={...SN};(n>p?l:s)[p]=n;
+  if(!ok(l,s)){hint('Susunan itu membuat permainan tidak bisa selesai');return}
+  pend=0;setArena(l,s);reset();hint(`${n>p?'Tangga':'Ular'} dibuat: kotak ${p} ke ${n}`);
+};
+reset();
+</script>
+</body>
+</html>

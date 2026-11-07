@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Generator Bangun Ruang Gabungan</title>
+<style>
+:root{--bg:#f6f5f1;--fg:#1d1d1b;--mut:#6b6a64;--card:#fff;--bd:#d9d7cf;--ac:#2f6fdb;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1b19;--fg:#ecebe6;--mut:#a09f97;--card:#262624;--bd:#3d3d39;--ac:#6f9cf0}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,sans-serif}
+main{max-width:1100px;margin:0 auto;padding:16px}h1{font-size:20px;margin:0 0 4px}p.s{color:var(--mut);margin:0 0 14px}
+.panel{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));align-items:end}
+label{display:grid;gap:3px;font-size:13px;color:var(--mut)}label.c{display:flex;gap:6px;align-items:center;color:var(--fg)}
+input[type=number],select{width:100%;padding:7px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--fg);font:inherit}
+button{padding:8px 12px;border:1px solid var(--bd);border-radius:8px;background:var(--card);color:var(--fg);font:inherit;cursor:pointer}
+button.p{background:var(--ac);border-color:var(--ac);color:#fff;font-weight:600}
+#msg{margin:12px 0;color:var(--mut);min-height:20px}
+#gal{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:10px}
+canvas{width:100%;aspect-ratio:6/5;background:#fff;border-radius:8px;display:block}
+.inf{white-space:pre-line;font-size:13px;margin:8px 0;min-height:18px}.inf b{font-size:14px}
+.bt{display:flex;gap:6px;flex-wrap:wrap}.bt button{padding:5px 9px;font-size:13px}
+#mod{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:9;padding:12px}#mod[hidden]{display:none}
+.mb{background:var(--card);border-radius:12px;padding:12px;width:min(720px,100%);max-height:100%;overflow:auto}.mh{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}.mh span{display:flex;gap:10px;align-items:center}
+#mv{height:min(58vh,460px);background:#fff;border-radius:8px;touch-action:none;cursor:grab;overflow:hidden}.mb small{color:var(--mut)}
+</style></head><body><main>
+<h1>Generator Bangun Ruang Gabungan</h1>
+<p class="s">Kubus dan balok yang menempel bidang ke bidang, lengkap dengan kunci volume dan luas permukaan. Ukuran rusuk kelipatan 0,5 cm.</p>
+<div class="panel">
+<label>Kubus (0–4)<input id="nk" type="number" min="0" max="4" value="1"></label>
+<label>Balok (0–4)<input id="nb" type="number" min="0" max="4" value="2"></label>
+<label>Jumlah gambar (1–100)<input id="n" type="number" min="1" max="100" value="6"></label>
+<label>Seed (opsional)<input id="seed" type="number" placeholder="acak"></label>
+<label>Pertanyaan<select id="q"><option value="2">Volume dan luas permukaan</option><option value="0">Volume saja</option><option value="1">Luas permukaan saja</option></select></label>
+<label>Tampilan<select id="vw"><option value="p" selected>Perspektif 3D</option><option value="o">Miring (kabinet)</option></select></label>
+<label>Tebal garis<select id="lw"><option value="1">Tipis</option><option value="1.8" selected>Sedang</option><option value="2.8">Tebal</option></select></label>
+<label class="c"><input id="t1" type="checkbox" checked>Menempel pada satu bangun saja</label>
+<label class="c"><input id="col" type="checkbox" checked>Warna beda tiap bangun</label>
+<label class="c"><input id="la" type="checkbox">Line art (tanpa warna)</label>
+<label class="c"><input id="lab" type="checkbox" checked>Tampilkan ukuran</label>
+<label class="c"><input id="key" type="checkbox" checked>Kunci jawaban</label>
+<label>Syarat desain<select id="dz"><option value="b">Bebas (acak penuh)</option><option value="s">Harus stabil</option></select></label>
+<label class="c"><input id="an" type="checkbox" checked>Analisis desain</label>
+<label class="c"><input id="um" type="checkbox" checked>Tanpa celah berbentuk U / mulut</label>
+<label class="c"><input id="gd" type="checkbox">Alas satu bidang datar di tanah</label>
+<button id="so">Urutkan skor</button>
+<button class="p" id="go">Buat gambar</button>
+</div>
+<div id="msg"></div><div id="sum" class="inf"></div><div id="gal"></div>
+</main>
+<div id="mod" hidden><div class="mb"><div class="mh"><b id="mt"></b><span><label class="c"><input id="ml" type="checkbox" checked>Ukuran</label><button id="mc">✕ Tutup</button></span></div><div id="mv"></div><div class="inf" id="mi"></div><small>Geser untuk memutar. Roda mouse atau cubit untuk zoom.</small></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id),W=360,H=300,KC=.5*Math.SQRT1_2;
+const rngF=s=>{s>>>=0;return()=>{s=s+0x6D2B79F5>>>0;let t=s;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296}};
+const ri=(r,a,b)=>a+Math.floor(r()*(b-a+1)),shuf=(a,r)=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const fmt=x=>String(Math.round(x*100)/100).replace('.',',');
+let RES=[],used=new Set(),TYPES=[];
+
+// ---------- geometri (satuan sel = 0,5 cm) ----------
+function rel(A,B){const o=[];for(let i=0;i<3;i++){const v=Math.min(A.m[i]+A.d[i],B.m[i]+B.d[i])-Math.max(A.m[i],B.m[i]);if(v<0)return{k:0,a:0};o.push(v)}
+ const z=o.filter(v=>v==0).length;if(z==0)return{k:'ov',a:0};if(z==1)return{k:'face',a:o.filter(v=>v>0).reduce((p,q)=>p*q,1)};return{k:'edge',a:0}}
+function newBox(T,par,r){for(;;){let d;if(T=='k'){let s=ri(r,2,8);if(par&&r()<.4){const v=par.d[ri(r,0,2)];if(v>=2&&v<=8)s=v}d=[s,s,s]}
+ else{d=[ri(r,2,12),ri(r,2,12),ri(r,2,12)];if(par&&r()<.4)d[ri(r,0,2)]=par.d[ri(r,0,2)];if(d[0]==d[1]&&d[1]==d[2])continue}
+ return{t:T,d,m:[0,0,0]}}}
+function place(B,A,r){const ax=ri(r,0,2),dir=r()<.5?1:-1;B.m[ax]=dir>0?A.m[ax]+A.d[ax]:A.m[ax]-B.d[ax];
+ for(let i=0;i<3;i++){if(i==ax)continue;const lo=A.m[i]-B.d[i]+2,hi=A.m[i]+A.d[i]-2,md=ri(r,0,3);let v=ri(r,lo,hi);
+  if(md==0)v=A.m[i];else if(md==1)v=A.m[i]+A.d[i]-B.d[i];else if(md==2&&(A.d[i]-B.d[i])%2==0)v=A.m[i]+(A.d[i]-B.d[i])/2;
+  B.m[i]=v>=lo&&v<=hi?v:ri(r,lo,hi)}}
+function valid(B,A,bx,single){for(const C of bx){const q=rel(B,C);if(q.k=='ov'||q.k=='edge')return false;if(q.k=='face'&&C!==A&&single)return false}
+ for(let i=0;i<3;i++){let a=B.m[i],b=B.m[i]+B.d[i];for(const C of bx){a=Math.min(a,C.m[i]);b=Math.max(b,C.m[i]+C.d[i])}if(b-a>24)return false}return true}
+function build(types,r,single){const ts=shuf(types,r),bx=[newBox(ts[0],null,r)];
+ for(let n=1;n<ts.length;n++){let ok=0;for(let a=0;a<80&&!ok;a++){const A=bx[ri(r,0,bx.length-1)],B=newBox(ts[n],A,r);place(B,A,r);if(valid(B,A,bx,single)){bx.push(B);ok=1}}if(!ok)return null}return bx}
+function rot(bx,k){let c=bx.map(b=>({t:b.t,m:[...b.m],d:[...b.d]}));
+ for(let j=0;j<k;j++)c.forEach(b=>{b.m=[-(b.m[1]+b.d[1]),b.m[0],b.m[2]];b.d=[b.d[1],b.d[0],b.d[2]]});
+ const mn=[0,1,2].map(i=>Math.min(...c.map(b=>b.m[i])));c.forEach(b=>b.m=b.m.map((v,i)=>v-mn[i]));return c}
+function mkGrid(bx){const N=[0,0,0];bx.forEach(b=>{for(let i=0;i<3;i++)N[i]=Math.max(N[i],b.m[i]+b.d[i])});
+ const g=new Int8Array(N[0]*N[1]*N[2]),at=(x,y,z)=>x<0||y<0||z<0||x>=N[0]||y>=N[1]||z>=N[2]?0:g[x+N[0]*(y+N[1]*z)];
+ bx.forEach((b,i)=>{for(let x=b.m[0];x<b.m[0]+b.d[0];x++)for(let y=b.m[1];y<b.m[1]+b.d[1];y++)for(let z=b.m[2];z<b.m[2]+b.d[2];z++)g[x+N[0]*(y+N[1]*z)]=i+1});return{N,g,at}}
+function cavity(G){const[a,b,c]=G.N,fl=G.g.reduce((s,v)=>s+(v?1:0),0),tot=(a+2)*(b+2)*(c+2)-fl,seen=new Set(),st=[[-1,-1,-1]];seen.add('-1,-1,-1');let n=0;
+ while(st.length){const[x,y,z]=st.pop();n++;for(const[dx,dy,dz]of[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]]){const X=x+dx,Y=y+dy,Z=z+dz;if(X<-1||Y<-1||Z<-1||X>a||Y>b||Z>c||G.at(X,Y,Z))continue;const k=X+','+Y+','+Z;if(!seen.has(k)){seen.add(k);st.push([X,Y,Z])}}}
+ return n!=tot}
+
+// ---------- proyeksi, muka, garis, label ----------
+const FT={f:{p:(x,y,z)=>[[x,y,z],[x+1,y,z],[x+1,y,z+1],[x,y,z+1]],n:[0,-1,0],e:[[0,0,-1],[1,0,0],[0,0,1],[-1,0,0]]},
+ t:{p:(x,y,z)=>[[x,y,z+1],[x+1,y,z+1],[x+1,y+1,z+1],[x,y+1,z+1]],n:[0,0,1],e:[[0,-1,0],[1,0,0],[0,1,0],[-1,0,0]]},
+ r:{p:(x,y,z)=>[[x+1,y,z],[x+1,y+1,z],[x+1,y+1,z+1],[x+1,y,z+1]],n:[1,0,0],e:[[0,0,-1],[0,1,0],[0,0,1],[0,-1,0]}};
+const inPoly=(p,q)=>{let c=false;for(let i=0,j=3;i<4;j=i++)if((q[i][1]>p[1])!=(q[j][1]>p[1])&&p[0]<(q[j][0]-q[i][0])*(p[1]-q[i][1])/(q[j][1]-q[i][1])+q[i][0])c=!c;return c};
+function layout(bx){const G=mkGrid(bx),[a,b,c]=G.N,at=G.at;
+ const pers=$('vw').value=='p',mx=Math.max(a,b,c),s0=mx*1.1+3,C=[a+.8*s0,-s0,c+.9*s0];
+ let fw=[a/2-C[0],b/2-C[1],c/2-C[2]];const fl=Math.hypot(...fw);fw=fw.map(v=>v/fl);let rt=[fw[1],-fw[0],0];const rl=Math.hypot(rt[0],rt[1]);rt=rt.map(v=>v/rl);
+ const upv=[rt[1]*fw[2]-rt[2]*fw[1],rt[2]*fw[0]-rt[0]*fw[2],rt[0]*fw[1]-rt[1]*fw[0]];
+ const pr=(x,y,z)=>{if(!pers)return[x+KC*y,z+KC*y];const d=[x-C[0],y-C[1],z-C[2]],zf=d[0]*fw[0]+d[1]*fw[1]+d[2]*fw[2];return[(d[0]*rt[0]+d[1]*rt[1])/zf,(d[0]*upv[0]+d[1]*upv[1]+d[2]*upv[2])/zf]};let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;
+ for(const q of[[0,0,0],[a,0,0],[0,b,0],[a,b,0],[0,0,c],[a,0,c],[0,b,c],[a,b,c]]){const[u,v]=pr(...q);x0=Math.min(x0,u);x1=Math.max(x1,u);y0=Math.min(y0,v);y1=Math.max(y1,v)}
+ const f=Math.min((W-76)/(x1-x0),(H-76)/(y1-y0),pers?28*fl:28);
+ const P=(x,y,z)=>{const[u,v]=pr(x,y,z);return[(W-f*(x1-x0))/2+f*(u-x0),(H+f*(y1-y0))/2-f*(v-y0)]};
+ const ex=(t,x,y,z)=>at(x,y,z)&&!at(x+FT[t].n[0],y+FT[t].n[1],z+FT[t].n[2]),id=(t,x,y,z)=>((z*64+y)*64+x)*3+'ftr'.indexOf(t);
+ const faces=[],segs=[],seen=new Set();let sx=0,sy=0,np=0;
+ for(let y=b-1;y>=0;y--)for(let x=0;x<a;x++)for(let z=0;z<c;z++){if(!at(x,y,z))continue;const own=at(x,y,z)-1;
+  for(const t of'ftr'){if(!ex(t,x,y,z))continue;const pts=FT[t].p(x,y,z).map(q=>P(...q)),es=[];seen.add(own);
+   for(let i=0;i<4;i++){const o=FT[t].e[i],nx=x+o[0],ny=y+o[1],nz=z+o[2];let k=0;
+    if(ex(t,nx,ny,nz)){const no=at(nx,ny,nz)-1;k=no==own?2:(id(t,x,y,z)<id(t,nx,ny,nz)?1:2)}
+    es.push(k);if(k<2)segs.push([pts[i],pts[(i+1)%4]])}
+   pts.forEach(q=>{sx+=q[0];sy+=q[1];np++});faces.push({t,own,pts,es})}}
+ if(seen.size<bx.length)return null;
+ const cen=[sx/np,sy/np];
+ const vis=p=>{const d=pers?C.map((v,i)=>v-p[i]):[KC,-1,KC],l=pers?Math.hypot(...d):1,u=d.map(v=>v/l);let q=p.map((v,i)=>v+.02*u[i]);for(let s=0;s<(pers?l*10:300);s++){if(at(Math.floor(q[0]),Math.floor(q[1]),Math.floor(q[2])))return false;q=q.map((v,i)=>v+.1*u[i]);if(q[1]<-1)break}return true};
+ const LB=[],hitSeg=(R,s)=>{const L=Math.hypot(s[1][0]-s[0][0],s[1][1]-s[0][1]),n=Math.ceil(L/3);for(let i=0;i<=n;i++){const px=s[0][0]+(s[1][0]-s[0][0])*i/n,py=s[0][1]+(s[1][1]-s[0][1])*i/n;if(px>R[0]&&px<R[2]&&py>R[1]&&py<R[3])return true}return false};
+ const tryPlace=(cd,txt)=>{const w=txt.length*8+8,h=16,dx=cd.B[0]-cd.A[0],dy=cd.B[1]-cd.A[1],L=Math.hypot(dx,dy);let nx=-dy/L,ny=dx/L;
+  const mid0=[(cd.A[0]+cd.B[0])/2,(cd.A[1]+cd.B[1])/2];if(nx*(mid0[0]-cen[0])+ny*(mid0[1]-cen[1])<0){nx=-nx;ny=-ny}
+  for(const fr of[.5,.3,.7])for(const e of[0,8,16]){const mx=cd.A[0]+dx*fr,my=cd.A[1]+dy*fr,off=Math.abs(nx)*w/2+Math.abs(ny)*h/2+3+e,cx=mx+nx*off,cy=my+ny*off,R=[cx-w/2,cy-h/2,cx+w/2,cy+h/2];
+   if(R[0]<2||R[1]<2||R[2]>W-2||R[3]>H-2)continue;
+   if(segs.some(s=>hitSeg(R,s)))continue;
+   if(faces.some(fc=>[[cx,cy],[R[0],R[1]],[R[2],R[1]],[R[0],R[3]],[R[2],R[3]]].some(p=>inPoly(p,fc.pts))))continue;
+   if(LB.some(l=>R[0]<l.R[2]+2&&R[2]>l.R[0]-2&&R[1]<l.R[3]+2&&R[3]>l.R[1]-2))continue;
+   return{text:txt,x:cx,y:cy,R}}return null};
+ for(const bo of bx){for(const ax of bo.t=='k'?[0]:[0,1,2]){const o=[0,1,2].filter(v=>v!=ax),cds=[];
+  for(let c1=0;c1<2;c1++)for(let c2=0;c2<2;c2++){const s=[...bo.m];s[o[0]]+=c1*bo.d[o[0]];s[o[1]]+=c2*bo.d[o[1]];const e=[...s];e[ax]+=bo.d[ax];
+   const A=P(...s),B=P(...e);if(Math.hypot(B[0]-A[0],B[1]-A[1])<14)continue;let v=0;for(const t of[.1,.3,.5,.7,.9])if(vis(s.map((q,i)=>q+(e[i]-q)*t)))v++;
+   if(v>=4)cds.push({A,B,L:Math.hypot(B[0]-A[0],B[1]-A[1])})}
+  cds.sort((p,q)=>q.L-p.L);let L=null;for(const cd of cds){L=tryPlace(cd,fmt(bo.d[ax]/2));if(L)break}
+  if(!L)return null;LB.push(L)}}
+ return{faces,labels:LB}}
+
+// ---------- hasil, kunci, verifikasi ----------
+const nm=t=>({k:'Kubus',b:'Balok'}[t]);
+function stats(bx){const G=mkGrid(bx);let V=0,Lb=[],Vb=[],K=[],ks=0;
+ bx.forEach(o=>{V+=o.d[0]*o.d[1]*o.d[2];Vb.push(o.d[0]*o.d[1]*o.d[2]);Lb.push(2*(o.d[0]*o.d[1]+o.d[0]*o.d[2]+o.d[1]*o.d[2]))});
+ for(let i=0;i<bx.length;i++)for(let j=i+1;j<bx.length;j++){const q=rel(bx[i],bx[j]);if(q.k=='face'){K.push(q.a);ks+=q.a}}
+ const Lp=Lb.reduce((s,v)=>s+v,0)-2*ks;let vox=0,sd=0;const[a,b,c]=G.N;
+ for(let x=0;x<a;x++)for(let y=0;y<b;y++)for(let z=0;z<c;z++)if(G.at(x,y,z)){vox++;for(const[dx,dy,dz]of[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]])if(!G.at(x+dx,y+dy,z+dz))sd++}
+ if(vox!=V||sd!=Lp){console.error('verifikasi gagal');return null}
+ const v8=n=>fmt(n/8),l4=n=>fmt(n/4),one=bx.length==1;
+ const vs='V = '+bx.map(o=>o.d.map(d=>fmt(d/2)).join(' × ')).join(' + ')+(one?'':' = '+Vb.map(v8).join(' + '))+' = '+v8(V)+' cm³';
+ const ls='Lp = '+Lb.map(l4).join(' + ')+(K.length?' − 2 × '+(K.length>1?'('+K.map(l4).join(' + ')+')':l4(K[0])):'')+' = '+l4(Lp)+' cm²';
+ return{vs,ls,sig:[...G.N].join('x')+':'+Array.from(G.g,v=>v?1:0).join('')}}
+function finish(bx,r){const b0=rot(bx,0);if(cavity(mkGrid(b0)))return null;if($('um').checked&&mouth(mkGrid(b0)))return null;const an=analyze(b0);if($('dz').value=='s'&&!an.stabil)return null;if($('gd').checked&&!an.fp)return null;
+ for(const k of shuf([0,1,2,3],r)){const rb=rot(bx,k),lay=layout(rb);if(!lay)continue;const s=stats(rb);if(!s)return null;
+  const sig=bx.map(o=>o.t).sort().join('')+'|'+s.sig;if(used.has(sig))continue;return{base:bx,rot:k,lay,sig,an,vs:s.vs,ls:s.ls,cs:ri(r,0,9)}}return null}
+function gen(types,r){const bx=build(types,r,$('t1').checked);if(!bx)return null;const x=finish(bx,r);if(x){x.types=types;used.add(x.sig)}return x}
+
+// ---------- tampilan ----------
+const PAL=[[210,65],[28,85],[145,45],[285,45],[350,70],[48,85],[180,55],[320,55],[100,45],[240,45]];
+function draw(res,cv){const ctx=cv.getContext('2d');cv.width=W*2;cv.height=H*2;ctx.setTransform(2,0,0,2,0,0);ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
+ const lw=+$('lw').value,la=$('la').checked,col=$('col').checked;ctx.lineJoin=ctx.lineCap='round';
+ for(const fc of res.lay.faces){const[h,s]=PAL[((col?fc.own:0)+res.cs)%10],l={t:70,f:62,r:50}[fc.t];
+  ctx.beginPath();fc.pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();ctx.fillStyle=la?'#fff':`hsl(${h} ${s}% ${l}%)`;ctx.fill();
+  ctx.strokeStyle='#222';fc.es.forEach((k,i)=>{if(k==2)return;const a=fc.pts[i],b=fc.pts[(i+1)%4];ctx.beginPath();ctx.setLineDash(k?[4,3]:[]);ctx.lineWidth=k?lw*.6:lw;ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke()});ctx.setLineDash([])}
+ if($('lab').checked){ctx.font='bold 13px system-ui,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#111';res.lay.labels.forEach(l=>ctx.fillText(l.text,l.x,l.y))}}
+function title(t){const k=t.filter(x=>x=='k').length,b=t.length-k;return[k&&k+' Kubus',b&&b+' Balok'].filter(Boolean).join(' + ')}
+function info(res,i){const q=$('q').value;return`<b>Gambar ${i+1} · ${title(res.types)}</b>`+($('key').checked?'\n'+(q!='1'?res.vs+'\n':'')+(q!='0'?res.ls:''):'')+($('an').checked?'\n'+anTxt(res.an):'')}
+function render(){const g=$('gal');g.innerHTML='';RES.forEach((res,i)=>{const d=document.createElement('div');d.className='card';
+ d.innerHTML='<canvas></canvas><div class="inf"></div><div class="bt"><button>🧊 Model 3D</button><button>🔄 Ganti baru</button><button>↻ Putar 90°</button><button>⬇ PNG</button></div>';
+ const cv=d.querySelector('canvas'),inf=d.querySelector('.inf'),[b0,b1,b2,b3]=d.querySelectorAll('button');b0.onclick=()=>open3d(res);
+ res._cv=cv;res._inf=inf;res._i=i;draw(res,cv);inf.innerHTML=info(res,i);
+ b1.onclick=()=>{used.delete(res.sig);const r=rngF(Date.now());let x=null;for(let t=0;t<500&&!x;t++)x=gen(res.types,r);if(x){RES[i]=x;render()}else{used.add(res.sig);$('msg').textContent='Tidak ada susunan baru yang valid.'}};
+ b2.onclick=()=>{for(let k=1;k<4;k++){const rk=(res.rot+k)%4,lay=layout(rot(res.base,rk));if(lay){res.rot=rk;res.lay=lay;draw(res,cv);return}}};
+ b3.onclick=()=>{const a=document.createElement('a');a.download='bangun-ruang-'+(i+1)+'.png';a.href=cv.toDataURL();a.click()};
+ g.appendChild(d)});sumUpd()}
+function redraw(){RES.forEach(r=>{draw(r,r._cv);r._inf.innerHTML=info(r,r._i)})}
+$('go').onclick=()=>{const nk=+$('nk').value||0,nb=+$('nb').value||0,n=Math.max(1,Math.min(100,+$('n').value||1));
+ if(nk+nb<2||nk+nb>6){$('msg').textContent='Jumlah bangun penyusun harus 2 sampai 6.';return}
+ let seed=$('seed').value.trim();seed=seed===''?Math.floor(Math.random()*9999)+1:+seed;$('seed').value=seed;
+ const r=rngF(seed);TYPES=[...Array(nk).fill('k'),...Array(nb).fill('b')];used=new Set();RES=[];let tries=0;
+ while(RES.length<n&&tries<n*60){tries++;const x=gen(TYPES,r);if(x)RES.push(x)}
+ render();const rej=tries-RES.length;
+ $('msg').textContent=!RES.length?'Tidak ada susunan valid. Kurangi jumlah bangun atau longgarkan pilihan.':RES.length<n?`Berhasil ${RES.length} dari ${n} gambar (kombinasi terbatas). Seed: ${seed}`:`${n} gambar. ${rej} susunan dibuang karena rusuk atau angkanya bertumpuk. Seed: ${seed}`};
+['q','lw','la','col','lab','key'].forEach(k=>$(k).onchange=redraw);
+$('vw').onchange=()=>$('go').click();
+
+// celah/mulut: garis lurus sejajar sumbu yang bertemu padat, kosong, lalu padat lagi
+function mouth(G){const N=G.N,at=G.at;for(let ax=0;ax<3;ax++){const o=[0,1,2].filter(v=>v!=ax);for(let i=0;i<N[o[0]];i++)for(let j=0;j<N[o[1]];j++){let st=0;for(let k=0;k<N[ax];k++){const q=[0,0,0];q[o[0]]=i;q[o[1]]=j;q[ax]=k;if(at(q[0],q[1],q[2])){if(st==2)return true;st=1}else if(st==1)st=2}}}return false}
+// ---------- analisis desain: prinsip dari keacakan ----------
+function analyze(rb){const G=mkGrid(rb),[a,b,c]=G.N,at=G.at;let V=0,cx=0,cy=0;
+ rb.forEach(o=>{const v=o.d[0]*o.d[1]*o.d[2];V+=v;cx+=v*(o.m[0]+o.d[0]/2);cy+=v*(o.m[1]+o.d[1]/2)});cx/=V;cy/=V;
+ let x0=99,x1=-1,y0=99,y1=-1,fc=0;for(let x=0;x<a;x++)for(let y=0;y<b;y++)if(at(x,y,0)){fc++;x0=Math.min(x0,x);x1=Math.max(x1,x+1);y0=Math.min(y0,y);y1=Math.max(y1,y+1)}
+ const st=cx>x0&&cx<x1&&cy>y0&&cy<y1,gr=new Set();rb.forEach((o,i)=>{if(o.m[2]==0)gr.add(i)});
+ for(let ch=1;ch;){ch=0;rb.forEach((B,j)=>{if(gr.has(j))return;for(const i of gr)if(rb[i].m[2]+rb[i].d[2]==B.m[2]&&rel(rb[i],B).k=='face'){gr.add(j);ch=1;break}})}
+ let ov=false;rb.forEach(B=>{if(B.m[2]==0)return;let s=0;rb.forEach(A=>{if(A.m[2]+A.d[2]==B.m[2]){const q=rel(A,B);if(q.k=='face')s+=q.a}});if(s<.5*B.d[0]*B.d[1])ov=true});
+ let mx=true,my=true;for(let x=0;x<a;x++)for(let y=0;y<b;y++)for(let z=0;z<c;z++){if(at(x,y,z)!=0!=(at(a-1-x,y,z)!=0))mx=false;if(at(x,y,z)!=0!=(at(x,b-1-y,z)!=0))my=false}
+ const all=[];rb.forEach(o=>all.push(...(o.t=='k'?[o.d[0]]:o.d)));const nd=new Set(all).size,jl=gr.size==rb.length;
+ return{st,jl,ov,fp:fc==(x1-x0)*(y1-y0),sm:mx||my,tr:nd/all.length<=.6,nd,stabil:st&&jl&&!ov,ht:c/Math.sqrt((x1-x0)*(y1-y0))}}
+const sc=a=>(a.stabil?1:0)+(a.sm?1:0)+(a.tr?1:0);
+function anTxt(a){const m=x=>x?'✓':'✗',why=a.stabil?'':' ('+(!a.st?'pusat massa di luar alas':!a.jl?'ada bagian menggantung':'menjorok lebih dari separuh')+')';
+ return m(a.stabil)+' Stabil'+why+'  '+m(a.sm)+' Simetris  '+m(a.tr)+' Ukuran teratur ('+a.nd+' ukuran rusuk)'+'  '+m(a.fp)+' Alas 1 bidang'}
+function sumUpd(){const n=RES.length,e=$('sum');if(!n||!$('an').checked){e.innerHTML='';return}const A=RES.map(r=>r.an),p=f=>Math.round(100*A.filter(f).length/n)+'%';
+ const S=A.filter(x=>x.stabil),U=A.filter(x=>!x.stabil),av=l=>l.reduce((s,v)=>s+v.ht,0)/l.length,best=Math.max(...A.map(sc));
+ let t='<b>Ringkasan prinsip dari '+n+' gambar</b>\nStabil: '+p(x=>x.stabil)+' · Simetris: '+p(x=>x.sm)+' · Ukuran rusuk teratur: '+p(x=>x.tr);
+ if(S.length&&U.length){const s=av(S),u=av(U);t+='\nRata-rata tinggi ÷ alas: stabil '+fmt(s)+', tidak stabil '+fmt(u)+'. '+(s<u?'Prinsip: susunan stabil cenderung rendah dan lebar.':'Pada kumpulan ini belum terlihat pola tinggi dan alas.')}
+ t+='\nSkor terbaik ('+best+' dari 3): gambar '+RES.map((r,i)=>sc(r.an)==best?i+1:0).filter(Boolean).slice(0,8).join(', ');e.innerHTML=t}
+$('so').onclick=()=>{RES.sort((x,y)=>sc(y.an)-sc(x.an));render()};
+$('an').onchange=()=>{redraw();sumUpd()};$('dz').onchange=$('gd').onchange=$('um').onchange=()=>$('go').click();
+
+// ---------- model 3D (three.js) ----------
+let TR=null;
+function spr(t){const c=document.createElement('canvas');c.width=128;c.height=64;const x=c.getContext('2d');x.font='bold 40px system-ui,sans-serif';x.textAlign='center';x.textBaseline='middle';x.lineWidth=8;x.strokeStyle='#fff';x.strokeText(t,64,32);x.fillStyle='#111';x.fillText(t,64,32);
+ const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false}));s.scale.set(3.2,1.6,1);s.renderOrder=9;return s}
+function open3d(res){const mod=$('mod'),mv=$('mv');mod.hidden=false;
+ if(!TR){if(typeof THREE==='undefined'){mod.hidden=true;$('msg').textContent='Pustaka 3D gagal dimuat. Periksa koneksi internet.';return}
+  const rd=new THREE.WebGLRenderer({antialias:true}),el=rd.domElement;mv.appendChild(el);el.style.cssText='width:100%;height:100%;display:block';
+  TR={rd,sc:new THREE.Scene(),cam:new THREE.PerspectiveCamera(40,1,.1,600),az:.6,el:.5,r:30,c:new THREE.Vector3(),pt:new Map(),pd:0,on:0,labs:[],grp:null};
+  TR.sc.background=new THREE.Color(0xffffff);TR.sc.add(new THREE.AmbientLight(0xffffff,.7));const dl=new THREE.DirectionalLight(0xffffff,.55);dl.position.set(.5,1,.8);TR.sc.add(dl);
+  const pd=()=>{const v=[...TR.pt.values()];return v.length==2?Math.hypot(v[0][0]-v[1][0],v[0][1]-v[1][1]):0},zm=k=>TR.r=Math.max(4,Math.min(150,TR.r*k));
+  el.onpointerdown=e=>{el.setPointerCapture(e.pointerId);TR.pt.set(e.pointerId,[e.clientX,e.clientY]);TR.pd=pd()};
+  el.onpointermove=e=>{const o=TR.pt.get(e.pointerId);if(!o)return;const n=[e.clientX,e.clientY];TR.pt.set(e.pointerId,n);
+   if(TR.pt.size==1){TR.az-=(n[0]-o[0])*.01;TR.el=Math.max(-1.45,Math.min(1.45,TR.el+(n[1]-o[1])*.01))}else{const d=pd();if(TR.pd&&d)zm(TR.pd/d);TR.pd=d}};
+  el.onpointerup=el.onpointercancel=e=>{TR.pt.delete(e.pointerId);TR.pd=0};
+  el.onwheel=e=>{e.preventDefault();zm(1+e.deltaY*.001)}}
+ if(TR.grp)TR.sc.remove(TR.grp);
+ const g=new THREE.Group(),la=$('la').checked,col=$('col').checked,mn=[9e9,9e9,9e9],mx=[-9e9,-9e9,-9e9];TR.labs=[];
+ res.base.forEach((b,i)=>{const[d0,d1,d2]=b.d,geo=new THREE.BoxGeometry(d0,d2,d1),[h,sa]=PAL[((col?i:0)+res.cs)%10];
+  const P=new THREE.Vector3(b.m[0]+d0/2,b.m[2]+d2/2,-(b.m[1]+d1/2)),me=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:la?0xffffff:new THREE.Color(`hsl(${h},${sa}%,62%)`)}));me.position.copy(P);g.add(me);
+  const ed=new THREE.LineSegments(new THREE.EdgesGeometry(geo),new THREE.LineBasicMaterial({color:0x222222}));ed.position.copy(P);g.add(ed);
+  for(let k=0;k<3;k++){mn[k]=Math.min(mn[k],b.m[k]);mx[k]=Math.max(mx[k],b.m[k]+b.d[k])}
+  [[0,[P.x,P.y-d2/2-.8,P.z+d1/2+.8]],[1,[P.x+d0/2+.8,P.y-d2/2-.8,P.z]],[2,[P.x-d0/2-.8,P.y,P.z+d1/2+.8]]].forEach(([ax,p])=>{if(b.t=='k'&&ax)return;const s=spr(fmt(b.d[ax]/2));s.position.set(...p);s.visible=$('ml').checked;g.add(s);TR.labs.push(s)})});
+ TR.sc.add(g);TR.grp=g;TR.c.set((mn[0]+mx[0])/2,(mn[2]+mx[2])/2,-(mn[1]+mx[1])/2);TR.r=Math.max(mx[0]-mn[0],mx[1]-mn[1],mx[2]-mn[2])*2.2+6;TR.az=.6;TR.el=.5;
+ $('mt').textContent='Gambar '+(res._i+1)+' · '+title(res.types);$('mi').innerHTML=info(res,res._i).split('\n').slice(1).join('\n');
+ if(!TR.on){TR.on=1;loop()}}
+function loop(){if($('mod').hidden){TR.on=0;return}requestAnimationFrame(loop);const mv=$('mv'),w=mv.clientWidth,h=mv.clientHeight;
+ if(TR.w!=w||TR.h!=h){TR.w=w;TR.h=h;TR.rd.setPixelRatio(Math.min(devicePixelRatio,2));TR.rd.setSize(w,h,false);TR.cam.aspect=w/h;TR.cam.updateProjectionMatrix()}
+ const{az,el,r,c}=TR;TR.cam.position.set(c.x+r*Math.cos(el)*Math.sin(az),c.y+r*Math.sin(el),c.z+r*Math.cos(el)*Math.cos(az));TR.cam.lookAt(c);TR.rd.render(TR.sc,TR.cam)}
+$('mc').onclick=()=>$('mod').hidden=true;$('mod').onclick=e=>{if(e.target.id=='mod')$('mod').hidden=true};document.onkeydown=e=>{if(e.key=='Escape')$('mod').hidden=true};
+$('ml').onchange=()=>TR&&TR.labs.forEach(s=>s.visible=$('ml').checked);
+$('go').click();
+</script></body></html>
